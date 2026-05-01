@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sustainable City Game</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      background: #f4f6f8;
+      text-align: center;
+    }
+
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 15px;
+      font-size: 22px;
+    }
+
+    .container {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      margin: 10px;
+      border-radius: 10px;
+      width: 200px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    button {
+      padding: 8px;
+      margin-top: 8px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background: #2e7d32;
+      color: white;
+    }
+
+    #map {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      gap: 5px;
+      justify-content: center;
+      margin: 20px;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      background: #ddd;
+      border-radius: 5px;
+    }
+
+    #leaderboard {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>🌍 Sustainable City Game</header>
+
+<h3>Budget: ₹<span id="budget">100</span> Cr</h3>
+
+<div class="container" id="projects"></div>
+
+<h3>📊 Stats</h3>
+<canvas id="chart" width="300" height="300"></canvas>
+
+<h3>🗺️ City Map</h3>
+<div id="map"></div>
+
+<br>
+<button onclick="startGame()">Start Game</button>
+<button onclick="finishGame()">End Game</button>
+
+<h2 id="result"></h2>
+
+<h3>🏆 Leaderboard</h3>
+<div id="leaderboard"></div>
+
+<script>
+let budget, eco, env, happy, gameActive = false;
+
+const projects = [
+  {name:"☀️", cost:30, eco:10, env:25, happy:10},
+  {name:"🚇", cost:40, eco:20, env:20, happy:25},
+  {name:"🏭", cost:25, eco:30, env:-20, happy:5},
+  {name:"🌳", cost:10, eco:5, env:20, happy:20},
+  {name:"♻️", cost:15, eco:10, env:25, happy:15},
+  {name:"🛣️", cost:20, eco:15, env:-10, happy:10}
+];
+
+// Chart setup
+let chart = new Chart(document.getElementById("chart"), {
+  type: 'bar',
+  data: {
+    labels: ['Economy', 'Environment', 'Happiness'],
+    datasets: [{
+      data: [0,0,0]
+    }]
+  }
+});
+
+function updateChart(){
+  chart.data.datasets[0].data = [eco, env, happy];
+  chart.update();
+}
+
+// Create project buttons
+const container = document.getElementById("projects");
+projects.forEach((p,i)=>{
+  let div = document.createElement("div");
+  div.className = "card";
+  div.innerHTML = `
+    <h3>${p.name}</h3>
+    <p>₹${p.cost} Cr</p>
+    <button onclick="build(${i})">Build</button>
+  `;
+  container.appendChild(div);
+});
+
+// Map
+const map = document.getElementById("map");
+for(let i=0;i<16;i++){
+  let cell = document.createElement("div");
+  cell.className="cell";
+  map.appendChild(cell);
+}
+
+function build(i){
+  if(!gameActive) return alert("Start the game first!");
+  let p = projects[i];
+
+  if(budget >= p.cost){
+    budget -= p.cost;
+    eco += p.eco;
+    env += p.env;
+    happy += p.happy;
+
+    document.getElementById("budget").innerText = budget;
+    updateChart();
+
+    // add to map
+    let empty = [...document.querySelectorAll(".cell")].find(c=>c.innerHTML=="");
+    if(empty) empty.innerHTML = p.name;
+  }
+}
+
+// Start Game
+function startGame(){
+  budget = 100;
+  eco = 0;
+  env = 0;
+  happy = 0;
+  gameActive = true;
+  document.getElementById("budget").innerText = budget;
+  document.getElementById("result").innerText = "";
+
+  document.querySelectorAll(".cell").forEach(c=>c.innerHTML="");
+  updateChart();
+}
+
+// End Game
+function finishGame(){
+  if(!gameActive) return;
+
+  // Random Event
+  let events = [
+    ()=>{ if(env<30) happy-=20; return "🌪️ Pollution Crisis"; },
+    ()=>{ if(eco>50) eco+=20; return "💼 Economic Boom"; },
+    ()=>{ if(env>50) happy+=15; return "🌳 Climate Award"; }
+  ];
+
+  let event = events[Math.floor(Math.random()*events.length)]();
+
+  let total = eco + env + happy;
+  let title = total>120?"🌍 Champion": total>90?"⚖️ Balanced":"⚠️ Poor";
+
+  document.getElementById("result").innerText =
+    event + " | Score: " + total + " | " + title;
+
+  saveScore(total);
+  showLeaderboard();
+  gameActive = false;
+}
+
+// Leaderboard
+function saveScore(score){
+  let scores = JSON.parse(localStorage.getItem("scores") || "[]");
+  scores.push(score);
+  localStorage.setItem("scores", JSON.stringify(scores));
+}
+
+function showLeaderboard(){
+  let scores = JSON.parse(localStorage.getItem("scores") || "[]");
+  scores.sort((a,b)=>b-a);
+
+  let html = scores.slice(0,5).map(s=>"<p>"+s+"</p>").join("");
+  document.getElementById("leaderboard").innerHTML = html;
+}
+
+showLeaderboard();
+</script>
+
+</body>
+</html>
